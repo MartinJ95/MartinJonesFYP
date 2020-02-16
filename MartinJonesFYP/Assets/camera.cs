@@ -10,8 +10,7 @@ public class camera : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-		Debug.Log(this.transform.rotation);
-		Debug.Log(transform.forward);
+		
     }
 
     // Update is called once per frame
@@ -22,7 +21,7 @@ public class camera : MonoBehaviour
 
 		transform.Translate(xTranslation, 0, zTranslation, Space.World);
 
-		if (Input.GetButton("Fire1"))
+		if (Input.GetButtonDown("Fire1"))
 		{
 			RaycastHit hit;
 
@@ -32,7 +31,21 @@ public class camera : MonoBehaviour
 			{
 				if(hit.transform.gameObject.GetComponent<unit>())
 				{
-					hit.transform.gameObject.GetComponent<unit>().selected = true;
+                    if (hit.transform.gameObject.GetComponent<unit>().isPlayerUnit)
+                    {
+                        switch(hit.transform.gameObject.GetComponent<unit>().selected)
+                        {
+                            case true:
+                                hit.transform.gameObject.GetComponent<unit>().selected = false;
+                                break;
+                            case false:
+                                hit.transform.gameObject.GetComponent<unit>().selected = true;
+                                break;
+                            default:
+                                Debug.Log("WARNING: unit has no selection value");
+                                break;
+                        }
+                    }
 				}
 			}
 		}
@@ -56,9 +69,7 @@ public class camera : MonoBehaviour
 						}
 					}
 				}
-			}
-
-			
+			}            			
 		}
     }
 }
