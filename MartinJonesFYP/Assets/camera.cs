@@ -26,6 +26,23 @@ public class camera : MonoBehaviour
 			RaycastHit hit;
 
 			Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            Debug.DrawRay(ray.origin, ray.direction * 15, Color.green, 5);
+
+            if (!Input.GetButton("function"))
+            {
+                GameObject[] obj = FindObjectsOfType<GameObject>();
+
+                foreach (GameObject o in obj)
+                {
+                    if (o.GetComponent<unit>())
+                    {
+                        if (o.GetComponent<unit>().selected)
+                        {
+                            o.GetComponent<unit>().selected = false;
+                        }
+                    }
+                }
+            }
 
 			if (Physics.Raycast(ray, out hit))
 			{
@@ -54,8 +71,9 @@ public class camera : MonoBehaviour
 			RaycastHit hit;
 
 			Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            Debug.DrawRay(ray.origin, ray.direction * 15, Color.green, 5);
 
-			if(Physics.Raycast(ray, out hit))
+            if (Physics.Raycast(ray, out hit))
 			{
 				GameObject[] obj = FindObjectsOfType<GameObject>();
 
@@ -65,7 +83,14 @@ public class camera : MonoBehaviour
 					{
 						if (o.GetComponent<unit>().selected)
 						{
-							o.GetComponent<NavMeshAgent>().destination = hit.point;
+                            NavMeshPath path = new NavMeshPath();
+                            o.GetComponent<NavMeshAgent>().CalculatePath(hit.point, path);
+                            if(path.status == NavMeshPathStatus.PathComplete)
+                            {
+                                o.GetComponent<NavMeshAgent>().destination = hit.point;
+                                o.GetComponent<unit>().setPosition = hit.point;
+                                o.GetComponent<unit>().state = unitState.moving;
+                            }
 						}
 					}
 				}
