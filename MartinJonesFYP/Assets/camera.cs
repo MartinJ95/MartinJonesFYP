@@ -83,6 +83,19 @@ public class camera : MonoBehaviour
 					{
 						if (o.GetComponent<unit>().selected)
 						{
+                            if(hit.transform.gameObject.GetComponent<unit>())
+                            {
+                                if(hit.transform.gameObject.GetComponent<unit>().isPlayerUnit)
+                                {
+                                    o.GetComponent<unit>().state = unitState.assisting;
+                                    o.GetComponent<unit>().target = hit.transform.gameObject;
+                                }
+                                else
+                                {
+                                    o.GetComponent<unit>().state = unitState.engaging;
+                                    o.GetComponent<unit>().target = hit.transform.gameObject;
+                                }
+                            }
                             NavMeshPath path = new NavMeshPath();
                             o.GetComponent<NavMeshAgent>().CalculatePath(hit.point, path);
                             if(path.status == NavMeshPathStatus.PathComplete)
