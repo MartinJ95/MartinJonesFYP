@@ -83,9 +83,9 @@ public class camera : MonoBehaviour
 					{
 						if (o.GetComponent<unit>().selected)
 						{
-                            if(hit.transform.gameObject.GetComponent<unit>())
+                            if (hit.transform.gameObject.GetComponent<unit>())
                             {
-                                if(hit.transform.gameObject.GetComponent<unit>().isPlayerUnit)
+                                if (hit.transform.gameObject.GetComponent<unit>().isPlayerUnit)
                                 {
                                     o.GetComponent<unit>().state = unitState.assisting;
                                     o.GetComponent<unit>().target = hit.transform.gameObject;
@@ -96,13 +96,17 @@ public class camera : MonoBehaviour
                                     o.GetComponent<unit>().target = hit.transform.gameObject;
                                 }
                             }
-                            NavMeshPath path = new NavMeshPath();
-                            o.GetComponent<NavMeshAgent>().CalculatePath(hit.point, path);
-                            if(path.status == NavMeshPathStatus.PathComplete)
+                            else
                             {
-                                o.GetComponent<NavMeshAgent>().destination = hit.point;
-                                o.GetComponent<unit>().setPosition = hit.point;
-                                o.GetComponent<unit>().state = unitState.moving;
+                                NavMeshPath path = new NavMeshPath();
+                                o.GetComponent<NavMeshAgent>().CalculatePath(hit.point, path);
+                                if (path.status == NavMeshPathStatus.PathComplete)
+                                {
+                                    o.GetComponent<NavMeshAgent>().destination = hit.point;
+                                    o.GetComponent<NavMeshAgent>().isStopped = false;
+                                    o.GetComponent<unit>().setPosition = hit.point;
+                                    o.GetComponent<unit>().state = unitState.moving;
+                                }
                             }
 						}
 					}

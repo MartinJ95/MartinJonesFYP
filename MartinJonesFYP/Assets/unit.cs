@@ -75,6 +75,7 @@ public class unit : MonoBehaviour
             if(Vector3.Distance(transform.position, target.transform.position) > weaponRange / 3)
             {
                 GetComponent<NavMeshAgent>().destination = target.transform.position;
+                GetComponent<NavMeshAgent>().isStopped = false;
             }
             else
             {
@@ -86,6 +87,7 @@ public class unit : MonoBehaviour
             if(Vector3.Distance(transform.position, target.transform.position) > weaponRange)
             {
                 GetComponent<NavMeshAgent>().destination = target.transform.position;
+                GetComponent<NavMeshAgent>().isStopped = false;
             }
             else
             {
@@ -101,9 +103,12 @@ public class unit : MonoBehaviour
 
         foreach(unit u in units)
         {
-            if(u.isPlayerUnit != isPlayerUnit && canShoot)
+            if(u.isPlayerUnit != isPlayerUnit && Vector3.Distance(transform.position, u.transform.position) < weaponRange)
             {
-                shoot(u.transform.gameObject);
+                if (canShoot)
+                {
+                    shoot(u.transform.gameObject);
+                }
             }
         }
     }
