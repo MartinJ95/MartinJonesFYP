@@ -6,13 +6,16 @@ using UnityEngine.AI;
 public enum pointOfInterestType
 {
     ally,
-    enemy
+    enemy,
+    healingBuilding,
+    cover
 }
 
 public class pointOfInterest
 {
-    pointOfInterestType m_type;
+    public pointOfInterestType m_type;
     public List<GameObject> m_objects = new List<GameObject>();
+    public float powerValue;
     public float m_weighting;
 
     public pointOfInterest()
@@ -24,6 +27,37 @@ public class pointOfInterest
     {
         m_type = type;
         m_objects.Add(obj);
+    }
+
+    public void calculatePower()
+    {
+        powerValue = 0;
+        foreach(GameObject o in m_objects)
+        {
+            powerValue += o.GetComponent<unit>().attackDamage;
+        }
+    }
+
+    public float calculateRadius()
+    {
+        if(m_objects.Count == 1)
+        {
+            if(m_objects[0].GetComponent<unit>())
+            {
+                return m_objects[0].GetComponent<unit>().awarenessRange;
+            }
+            return m_objects[0].transform.localScale.magnitude;
+        }
+        float maxRadius = 0;
+        foreach(GameObject o in m_objects)
+        {
+            float length = Vector3.Distance(m_objects[0].transform.position, o.transform.position);
+            if (length > maxRadius)
+            {
+                maxRadius = length;
+            }
+        }
+        return maxRadius;
     }
 
     public Vector3 calculatePosition()
@@ -45,70 +79,29 @@ public class pointOfInterest
     }
 }
 
-public class matrixTest
-{
-    int[] values = new int[9];
-
-    public matrixTest(int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9)
-    {
-        values[0] = v1;
-        values[1] = v2;
-        values[2] = v3;
-        values[3] = v4;
-        values[4] = v5;
-        values[5] = v6;
-        values[6] = v7;
-        values[7] = v8;
-        values[8] = v9;
-    }
-
-    public void rotate()
-    {
-        int[] newValues = new int[9];
-        for(int i = 0; i < values.Length; i++)
-        {
-            if(i != 4)
-            {
-
-                int swapIndex = i + 1;
-                swapIndex = swapIndex * 3;
-                swapIndex = swapIndex % 10;
-                swapIndex -= 1;
-                //(((i + 1) * 3) % 10) - 1;
-
-                newValues[swapIndex] = values[i];
-            }
-            else
-            {
-                newValues[i] = values[i];
-            }
-        }
-        values = newValues;
-    }
-}
-
 public enum unitState
 {
-    idle = 0,
-    moving = 1,
-    engaging = 2,
-    assisting = 3,
-    delegating = 4
+    idle,
+    moving,
+    engaging,
+    assisting,
+    delegating
 }
 
 
 public class unit : MonoBehaviour
 {
-    public int health = 100;
-    public int attackDamage = 5;
+    public float health = 100;
+    public float attackDamage = 5;
     public bool isInPoint = false;
     public float weaponCooldown;
     public bool canShoot = true;
 	public bool selected = false;
     public bool isPlayerUnit = true;
+    public bool debugPoints = false;
     public GameObject target = null;
-    public int awarenessRange;
-    public int weaponRange;
+    public float awarenessRange;
+    public float weaponRange;
     public Vector3 setPosition;
     public unitState state;
     public GameObject bullet;
@@ -118,8 +111,6 @@ public class unit : MonoBehaviour
     void Start()
     {
         setPosition = transform.position;
-        matrixTest test = new matrixTest(1, 2, 3, 4, 5, 6, 7, 8, 9);
-        test.rotate();
     }
 
     public void cooldown()
@@ -151,10 +142,30 @@ public class unit : MonoBehaviour
     {
         if(pointsOfInterest.Count > 0)
         {
-            foreach (pointOfInterest p in pointsOfInterest)
+            if (debugPoints)
             {
-                Gizmos.DrawWireSphere(p.calculatePosition(), 25);
+                foreach (pointOfInterest p in pointsOfInterest)
+                {
+                    if(p.m_type == pointOfInterestType.ally || p.m_type == pointOfInterestType.healingBuilding)
+                    {
+                        Gizmos.color = Color.green;
+                    }
+                    else if(p.m_type == pointOfInterestType.enemy)
+                    {
+                        Gizmos.color = Color.red;
+                    }
+                    else if(p.m_type == pointOfInterestType.cover)
+                    {
+                        Gizmos.color = Color.blue;
+                    }
+                    Gizmos.DrawWireSphere(p.calculatePosition(), p.calculateRadius());
+                }
             }
+        }
+        if(debugPoints)
+        {
+            Gizmos.color = Color.grey;
+            Gizmos.DrawWireSphere(transform.position, awarenessRange);
         }
     }
 
@@ -209,7 +220,7 @@ public class unit : MonoBehaviour
                         u.isInPoint = true;
                         foreach (unit t in allUnits)
                         {
-                            if(Vector3.Distance(u.transform.position, t.transform.position) > u.awarenessRange && !t.isInPoint && t != this)
+                            if(Vector3.Distance(u.transform.position, t.transform.position) < u.awarenessRange && !t.isInPoint && t != this && t.isPlayerUnit == u.isPlayerUnit)
                             {
                                 point.m_objects.Add(t.transform.gameObject);
                                 t.isInPoint = true;
@@ -223,7 +234,7 @@ public class unit : MonoBehaviour
                         u.isInPoint = true;
                         foreach (unit t in allUnits)
                         {
-                            if (Vector3.Distance(u.transform.position, t.transform.position) > u.awarenessRange && !t.isInPoint && t != this)
+                            if (Vector3.Distance(u.transform.position, t.transform.position) < u.awarenessRange && !t.isInPoint && t != this && t.isPlayerUnit == u.isPlayerUnit)
                             {
                                 point.m_objects.Add(t.transform.gameObject);
                                 t.isInPoint = true;
@@ -233,6 +244,32 @@ public class unit : MonoBehaviour
                     }
                 }
             }
+
+            cover[] defenses = FindObjectsOfType<cover>();
+
+            foreach(cover c in defenses)
+            {
+                if(Vector3.Distance(transform.position, c.transform.position) < awarenessRange && !c.isInPoint)
+                {
+                    pointOfInterest point = new pointOfInterest(pointOfInterestType.cover, c.transform.gameObject);
+                    c.isInPoint = true;
+                    foreach (cover c1 in defenses)
+                    {
+                        if(Vector3.Distance(c.transform.position, c1.transform.position) < c.defenseAreaSize && !c1.isInPoint)
+                        {
+                            point.m_objects.Add(c1.transform.gameObject);
+                            c1.isInPoint = true;
+                        }
+                    }
+                    pointsOfInterest.Add(point);
+                }
+            }
+
+            foreach(cover c in defenses)
+            {
+                c.isInPoint = false;
+            }
+
             foreach(unit u in allUnits)
             {
                 u.isInPoint = false;

@@ -147,13 +147,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   health: 100
   attackDamage: 5
+  isInPoint: 0
   weaponCooldown: 5
   canShoot: 1
   selected: 0
   isPlayerUnit: 1
+  debugPoints: 0
   target: {fileID: 0}
-  awarenessRange: 50
-  weaponRange: 20
+  awarenessRange: 10
+  weaponRange: 5
   setPosition: {x: 0, y: 0, z: 0}
   state: 0
   bullet: {fileID: 5173077145901133609, guid: 9113c0aa65fc97146883d70937b36cf3, type: 3}

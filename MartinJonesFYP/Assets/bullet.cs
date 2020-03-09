@@ -5,7 +5,7 @@ using UnityEngine;
 public class bullet : MonoBehaviour
 {
     public Vector3 m_direction;
-    public int m_damage;
+    public float m_damage;
     public bool m_isPlayerOwned;
 
     public void cleanup()
