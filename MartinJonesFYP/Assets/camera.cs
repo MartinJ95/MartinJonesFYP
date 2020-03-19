@@ -46,6 +46,7 @@ public class camera : MonoBehaviour
 
 			if (Physics.Raycast(ray, out hit))
 			{
+				Debug.Log(hit.transform.gameObject.name);
 				if(hit.transform.gameObject.GetComponent<unit>())
 				{
                     if (hit.transform.gameObject.GetComponent<unit>().isPlayerUnit)
@@ -64,6 +65,10 @@ public class camera : MonoBehaviour
                         }
                     }
 				}
+			}
+			else
+			{
+				Debug.Log("did not select anything");
 			}
 		}
 		else if (Input.GetButton("Fire2"))
