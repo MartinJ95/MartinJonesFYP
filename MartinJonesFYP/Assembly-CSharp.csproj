@@ -65,6 +65,7 @@
     <Compile Include="Assets\bullet.cs" />
     <Compile Include="Assets\camera.cs" />
     <Compile Include="Assets\cover.cs" />
+    <Compile Include="Assets\pointOfInterest.cs" />
     <Compile Include="Assets\unit.cs" />
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>C:/Users/marti/Documents/GitHub/MartinJonesFYP/MartinJonesFYP/Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>

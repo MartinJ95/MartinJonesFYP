@@ -3,92 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public enum pointOfInterestType
-{
-    ally,
-    enemy,
-    healingBuilding,
-    cover
-}
-
-public class pointOfInterest
-{
-    public pointOfInterestType m_type;
-    public List<GameObject> m_objects = new List<GameObject>();
-    public float powerValue;
-    public float m_weighting;
-
-    public pointOfInterest()
-    {
-
-    }
-
-    public pointOfInterest(pointOfInterestType type, in GameObject obj)
-    {
-        m_type = type;
-        m_objects.Add(obj);
-    }
-
-    public void calculatePower()
-    {
-        powerValue = 0;
-        foreach(GameObject o in m_objects)
-        {
-            powerValue += o.GetComponent<unit>().attackDamage;
-        }
-    }
-
-    public float calculateRadius()
-    {
-        if(m_objects.Count == 1)
-        {
-            if(m_objects[0].GetComponent<unit>())
-            {
-                return m_objects[0].GetComponent<unit>().awarenessRange;
-            }
-            return m_objects[0].transform.localScale.magnitude;
-        }
-        float maxRadius = 0;
-        foreach(GameObject o in m_objects)
-        {
-            float length = Vector3.Distance(m_objects[0].transform.position, o.transform.position);
-            if (length > maxRadius)
-            {
-                maxRadius = length;
-            }
-        }
-        return maxRadius;
-    }
-
-    public Vector3 calculatePosition()
-    {
-        if(m_objects.Count == 1)
-        {
-            return m_objects[0].transform.position;
-        }
-        else
-        {
-            Vector3 pointCenter = new Vector3(0, 0, 0);
-            foreach(GameObject obj in m_objects)
-            {
-                pointCenter += obj.transform.position;
-            }
-            pointCenter /= m_objects.Count;
-            return pointCenter;
-        }
-    }
-}
-
-public enum unitState
-{
-    idle,
-    moving,
-    engaging,
-    assisting,
-    delegating
-}
-
-
 public class unit : MonoBehaviour
 {
     public float health = 100;
@@ -166,13 +80,136 @@ public class unit : MonoBehaviour
         {
             Gizmos.color = Color.grey;
             Gizmos.DrawWireSphere(transform.position, awarenessRange);
+			Gizmos.color = Color.yellow;
+			Gizmos.DrawWireSphere(setPosition, 1);
         }
     }
 
-    // Update is called once per frame
-    void Update()
+	private void moveTo(Vector3 destination, float distance, float range = 0.1f)
+	{
+		if(distance > range)
+		{
+			GetComponent<NavMeshAgent>().destination = destination;
+			GetComponent<NavMeshAgent>().isStopped = false;
+		}
+		else
+		{
+			GetComponent<NavMeshAgent>().isStopped = true;
+		}
+	}
+
+	private void generatePoint(unit u, pointOfInterestType type, unit[] allUnits)
+	{
+		pointOfInterest point = new pointOfInterest(type, u.transform.gameObject);
+		u.isInPoint = true;
+		foreach (unit t in allUnits)
+		{
+			if (Vector3.Distance(u.transform.position, t.transform.position) < u.awarenessRange && !t.isInPoint && t != this && t.isPlayerUnit == u.isPlayerUnit)
+			{
+				point.m_objects.Add(t.transform.gameObject);
+				t.isInPoint = true;
+			}
+		}
+		pointsOfInterest.Add(point);
+	}
+
+	private void generatePoint(cover c, cover[] defenses)
+	{
+		pointOfInterest point = new pointOfInterest(pointOfInterestType.cover, c.transform.gameObject);
+		c.isInPoint = true;
+		foreach (cover c1 in defenses)
+		{
+			if (Vector3.Distance(c.transform.position, c1.transform.position) < c.defenseAreaSize && !c1.isInPoint)
+			{
+				point.m_objects.Add(c1.transform.gameObject);
+				c1.isInPoint = true;
+			}
+		}
+		pointsOfInterest.Add(point);
+	}
+
+	private GameObject findClosestUnit(pointOfInterest point)
+	{
+		GameObject closestUnit = point.m_objects[0];
+		foreach (GameObject o in point.m_objects)
+		{
+			if (Vector3.Distance(transform.position, o.transform.position) < Vector3.Distance(transform.position, closestUnit.transform.position))
+			{
+				closestUnit = o;
+			}
+		}
+		return closestUnit;
+	}
+
+	private pointOfInterest findHighestWeighted(float allyScore, float enemyScore, ref pointOfInterest lowestWeighted)
+	{
+		pointOfInterest highestWeighted = null;
+		foreach (pointOfInterest p in pointsOfInterest)
+		{
+			if (p.m_type == pointOfInterestType.ally)
+			{
+				p.calculateWeighting(setPosition, awarenessRange, enemyScore - allyScore);
+			}
+			else if (p.m_type == pointOfInterestType.enemy)
+			{
+				p.calculateWeighting(setPosition, awarenessRange, allyScore - enemyScore);
+			}
+			else if (p.m_type == pointOfInterestType.cover)
+			{
+				p.calculateWeighting(setPosition, awarenessRange, (enemyScore - allyScore) * 2);
+			}
+			if (lowestWeighted == null)
+			{
+				lowestWeighted = p;
+			}
+			else if(p.m_weighting < lowestWeighted.m_weighting)
+			{
+				lowestWeighted = p;
+			}
+			if (highestWeighted == null)
+			{
+				highestWeighted = p;
+			}
+			else if (p.m_weighting > highestWeighted.m_weighting)
+			{
+				if (p.m_type == pointOfInterestType.cover)
+				{
+					bool isOccupied = false;
+					foreach (pointOfInterest p1 in pointsOfInterest)
+					{
+						if (p1 != p)
+						{
+							if (Vector3.Distance(p1.calculatePosition(), p.calculatePosition()) < p.calculateRadius() && p1.m_type == pointOfInterestType.enemy)
+							{
+								isOccupied = true;
+								break;
+							}
+						}
+					}
+					if (isOccupied)
+					{
+						p.m_weighting = 0;
+					}
+					else
+					{
+						highestWeighted = p;
+					}
+				}
+				else
+				{
+					highestWeighted = p;
+				}
+			}
+		}
+		return highestWeighted;
+	}
+
+	// Update is called once per frame
+	void Update()
     {
-        if (state == unitState.moving)
+		unit[] allUnits = FindObjectsOfType<unit>();
+
+		if (state == unitState.moving)
         {
             if (GetComponent<NavMeshAgent>().remainingDistance < 0.1f)
             {
@@ -182,65 +219,27 @@ public class unit : MonoBehaviour
         }
         else if(state == unitState.assisting)
         {
-            if(Vector3.Distance(transform.position, target.transform.position) > weaponRange / 3)
-            {
-                GetComponent<NavMeshAgent>().destination = target.transform.position;
-                GetComponent<NavMeshAgent>().isStopped = false;
-            }
-            else
-            {
-                GetComponent<NavMeshAgent>().isStopped = true;
-            }
+			moveTo(target.transform.position, Vector3.Distance(transform.position, target.transform.position), weaponRange / 3);
         }
         else if(state == unitState.engaging)
         {
-            if(Vector3.Distance(transform.position, target.transform.position) > weaponRange)
-            {
-                GetComponent<NavMeshAgent>().destination = target.transform.position;
-                GetComponent<NavMeshAgent>().isStopped = false;
-            }
-            else
-            {
-                GetComponent<NavMeshAgent>().isStopped = true;
-            }
+			moveTo(target.transform.position, Vector3.Distance(transform.position, target.transform.position), weaponRange);
         }
         else if(state == unitState.idle || state == unitState.delegating)
         {
             pointsOfInterest.RemoveRange(0, pointsOfInterest.Count);
 
-            unit[] allUnits = FindObjectsOfType<unit>();
-
             foreach(unit u in allUnits)
             {
-                if(Vector3.Distance(transform.position, u.transform.position) < awarenessRange && !u.isInPoint && u != this)
+                if(Vector3.Distance(setPosition, u.transform.position) < awarenessRange && !u.isInPoint && u != this)
                 {
                     if (u.isPlayerUnit == isPlayerUnit)
                     {
-                        pointOfInterest point = new pointOfInterest(pointOfInterestType.ally, u.transform.gameObject);
-                        u.isInPoint = true;
-                        foreach (unit t in allUnits)
-                        {
-                            if(Vector3.Distance(u.transform.position, t.transform.position) < u.awarenessRange && !t.isInPoint && t != this && t.isPlayerUnit == u.isPlayerUnit)
-                            {
-                                point.m_objects.Add(t.transform.gameObject);
-                                t.isInPoint = true;
-                            }
-                        }
-                        pointsOfInterest.Add(point);
+						generatePoint(u, pointOfInterestType.ally, allUnits);
                     }
                     else
                     {
-                        pointOfInterest point = new pointOfInterest(pointOfInterestType.enemy, u.transform.gameObject);
-                        u.isInPoint = true;
-                        foreach (unit t in allUnits)
-                        {
-                            if (Vector3.Distance(u.transform.position, t.transform.position) < u.awarenessRange && !t.isInPoint && t != this && t.isPlayerUnit == u.isPlayerUnit)
-                            {
-                                point.m_objects.Add(t.transform.gameObject);
-                                t.isInPoint = true;
-                            }
-                        }
-                        pointsOfInterest.Add(point);
+						generatePoint(u, pointOfInterestType.enemy, allUnits);
                     }
                 }
             }
@@ -251,17 +250,7 @@ public class unit : MonoBehaviour
             {
                 if(Vector3.Distance(transform.position, c.transform.position) < awarenessRange && !c.isInPoint)
                 {
-                    pointOfInterest point = new pointOfInterest(pointOfInterestType.cover, c.transform.gameObject);
-                    c.isInPoint = true;
-                    foreach (cover c1 in defenses)
-                    {
-                        if(Vector3.Distance(c.transform.position, c1.transform.position) < c.defenseAreaSize && !c1.isInPoint)
-                        {
-                            point.m_objects.Add(c1.transform.gameObject);
-                            c1.isInPoint = true;
-                        }
-                    }
-                    pointsOfInterest.Add(point);
+					generatePoint(c, defenses);
                 }
             }
 
@@ -274,11 +263,65 @@ public class unit : MonoBehaviour
             {
                 u.isInPoint = false;
             }
+
+			float allyScore = this.attackDamage;
+			float enemyScore = 0;
+
+			foreach(pointOfInterest p in pointsOfInterest)
+			{
+				if(p.m_type == pointOfInterestType.ally)
+				{
+					allyScore += p.calculatePower();
+				}
+				else if(p.m_type == pointOfInterestType.enemy)
+				{
+					enemyScore += p.calculatePower();
+				}
+			}
+
+			pointOfInterest lowestWeighted = null;
+			pointOfInterest highestWeighted = findHighestWeighted(allyScore, enemyScore, ref lowestWeighted);
+			if(highestWeighted == null)
+			{
+				moveTo(setPosition, Vector3.Distance(transform.position, setPosition), 0.5f);
+			}
+			else
+			{
+				if(debugPoints)
+				{
+					Debug.Log(highestWeighted.m_weighting);
+				}
+				if(enemyScore > allyScore * 2 && lowestWeighted.m_type == pointOfInterestType.enemy)
+				{
+					GameObject closestUnit = findClosestUnit(lowestWeighted);
+					Vector3 dest = transform.position + (((transform.position - closestUnit.transform.position).normalized) * 2);
+					moveTo(dest, Vector3.Distance(transform.position, dest));
+;				}
+				else if(highestWeighted.m_weighting > attackDamage)
+				{
+					if(highestWeighted.m_type == pointOfInterestType.ally)
+					{
+						GameObject closestUnit = findClosestUnit(highestWeighted);
+						moveTo(closestUnit.transform.position, Vector3.Distance(transform.position, closestUnit.transform.position), weaponRange / 3);
+					}
+					else if(highestWeighted.m_type == pointOfInterestType.enemy)
+					{
+						GameObject closestUnit = findClosestUnit(highestWeighted);
+						moveTo(closestUnit.transform.position, Vector3.Distance(transform.position, closestUnit.transform.position), weaponRange);
+					}
+					else if(highestWeighted.m_type == pointOfInterestType.cover)
+					{
+						moveTo(highestWeighted.calculatePosition(), Vector3.Distance(transform.position, highestWeighted.calculatePosition()), 0.5f);
+					}
+				}
+				else
+				{
+					moveTo(setPosition, Vector3.Distance(transform.position, setPosition), 0.5f);
+				}
+			}
         }
 
-        unit[] units = FindObjectsOfType<unit>();
-
-        foreach(unit u in units)
+        foreach(unit u in allUnits)
         {
             if(u.isPlayerUnit != isPlayerUnit && Vector3.Distance(transform.position, u.transform.position) < weaponRange)
             {
