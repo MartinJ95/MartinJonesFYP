@@ -56,7 +56,7 @@ public class unit : MonoBehaviour
     {
         if(pointsOfInterest.Count > 0)
         {
-            if (debugPoints)
+            if (debugPoints || selected)
             {
                 foreach (pointOfInterest p in pointsOfInterest)
                 {
@@ -76,13 +76,18 @@ public class unit : MonoBehaviour
                 }
             }
         }
-        if(debugPoints)
+        if(debugPoints || selected)
         {
             Gizmos.color = Color.grey;
             Gizmos.DrawWireSphere(transform.position, awarenessRange);
 			Gizmos.color = Color.yellow;
 			Gizmos.DrawWireSphere(setPosition, 1);
         }
+		if(selected)
+		{
+			Gizmos.color = Color.cyan;
+			Gizmos.DrawWireCube(transform.position, transform.localScale);
+		}
     }
 
 	private void moveTo(Vector3 destination, float distance, float range = 0.1f)
@@ -128,6 +133,7 @@ public class unit : MonoBehaviour
 		pointsOfInterest.Add(point);
 	}
 
+	//finds closest unit attached to the point of interest
 	private GameObject findClosestUnit(pointOfInterest point)
 	{
 		GameObject closestUnit = point.m_objects[0];
@@ -141,6 +147,7 @@ public class unit : MonoBehaviour
 		return closestUnit;
 	}
 
+	// finds the pointsOfInterest with the highest and lowest weighting respectively. returns the highest while the lowest edited via reference
 	private pointOfInterest findHighestWeighted(float allyScore, float enemyScore, ref pointOfInterest lowestWeighted)
 	{
 		pointOfInterest highestWeighted = null;
@@ -158,17 +165,13 @@ public class unit : MonoBehaviour
 			{
 				p.calculateWeighting(setPosition, awarenessRange, (enemyScore - allyScore) * 2);
 			}
-			if (lowestWeighted == null)
-			{
-				lowestWeighted = p;
-			}
-			else if(p.m_weighting < lowestWeighted.m_weighting)
-			{
-				lowestWeighted = p;
-			}
 			if (highestWeighted == null)
 			{
 				highestWeighted = p;
+			}
+			else if (lowestWeighted == null)
+			{
+				lowestWeighted = p;
 			}
 			else if (p.m_weighting > highestWeighted.m_weighting)
 			{
@@ -200,7 +203,12 @@ public class unit : MonoBehaviour
 					highestWeighted = p;
 				}
 			}
+			else if (p.m_weighting < lowestWeighted.m_weighting)
+			{
+				lowestWeighted = p;
+			}
 		}
+			
 		return highestWeighted;
 	}
 
@@ -291,7 +299,7 @@ public class unit : MonoBehaviour
 				{
 					Debug.Log(highestWeighted.m_weighting);
 				}
-				if(enemyScore > allyScore * 2 && lowestWeighted.m_type == pointOfInterestType.enemy)
+				if(enemyScore > allyScore * 2 && lowestWeighted.m_type == pointOfInterestType.enemy && Vector3.Distance(transform.position, setPosition) < awarenessRange)
 				{
 					GameObject closestUnit = findClosestUnit(lowestWeighted);
 					Vector3 dest = transform.position + (((transform.position - closestUnit.transform.position).normalized) * 2);
@@ -321,6 +329,7 @@ public class unit : MonoBehaviour
 			}
         }
 
+		//tests to see if an enemy is within range and if this unit can shoot yet
         foreach(unit u in allUnits)
         {
             if(u.isPlayerUnit != isPlayerUnit && Vector3.Distance(transform.position, u.transform.position) < weaponRange)

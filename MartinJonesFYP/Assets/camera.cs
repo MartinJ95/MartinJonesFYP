@@ -21,6 +21,7 @@ public class camera : MonoBehaviour
 
 		transform.Translate(xTranslation, 0, zTranslation, Space.World);
 
+		// left click selects units or toggles enemy unit point of interest debugging
 		if (Input.GetButtonDown("Fire1"))
 		{
 			RaycastHit hit;
@@ -64,6 +65,10 @@ public class camera : MonoBehaviour
                                 break;
                         }
                     }
+					else
+					{
+						hit.transform.gameObject.GetComponent<unit>().debugPoints = !hit.transform.gameObject.GetComponent<unit>().debugPoints;
+					}
 				}
 			}
 			else
@@ -71,6 +76,8 @@ public class camera : MonoBehaviour
 				Debug.Log("did not select anything");
 			}
 		}
+
+		// right click tells the selected units to go to where the mouse is pointing 
 		else if (Input.GetButton("Fire2"))
 		{
 			RaycastHit hit;
